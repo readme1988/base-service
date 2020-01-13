@@ -1,5 +1,7 @@
 package io.choerodon.base.api.vo;
 
+import io.choerodon.base.api.validator.Insert;
+import io.choerodon.base.api.validator.Update;
 import io.swagger.annotations.ApiModelProperty;
 
 import javax.validation.constraints.NotEmpty;
@@ -7,9 +9,6 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.Set;
-
-import io.choerodon.base.api.validator.Insert;
-import io.choerodon.base.api.validator.Update;
 
 /**
  * @author zongw.lee@gmail.com

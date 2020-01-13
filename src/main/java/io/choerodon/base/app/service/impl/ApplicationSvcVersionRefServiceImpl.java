@@ -1,17 +1,6 @@
 package io.choerodon.base.app.service.impl;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
 import com.github.pagehelper.PageInfo;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
-import org.springframework.util.ObjectUtils;
-
 import io.choerodon.base.api.vo.AppServiceDetailsVO;
 import io.choerodon.base.api.vo.AppServiceVersionDetailsVO;
 import io.choerodon.base.app.service.ApplicationSvcVersionRefService;
@@ -23,6 +12,16 @@ import io.choerodon.base.infra.mapper.ApplicationSvcVersionRefMapper;
 import io.choerodon.base.infra.utils.PageUtils;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.core.exception.ext.InsertException;
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author Eugen

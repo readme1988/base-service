@@ -3,7 +3,7 @@ export default ({ level }) => ({
   selection: 'single',
   transport: {
     read: {
-      url: `/base/v1/labels?type=role&level=${level}`,
+      url: `/base/v1/labels?type=role&level=${level}${level === 'project' ? '&gitlabLabel=false' : ''}`,
       method: 'get',
     },
   },

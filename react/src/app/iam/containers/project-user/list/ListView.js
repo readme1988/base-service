@@ -11,6 +11,14 @@ import './index.less';
 
 const modalKey = Modal.key();
 
+let InviteModal = false;
+try {
+  const { default: requireData } = require('@choerodon/base-bus/lib/routes/invite-user');
+  InviteModal = requireData;
+} catch (error) {
+  InviteModal = false;
+}
+
 const { Column } = Table;
 export default function ListView(props) {
   const { intlPrefix,
@@ -78,12 +86,19 @@ export default function ListView(props) {
     openModal('importRole');
   }
   function handleDeleteUser(record) {
+    const roleIds = (record.get('roles') || []).map(({ id }) => id);
+    const postData = {
+      memberType: 'user',
+      view: 'userView',
+      sourceId: Number(projectId),
+      data: { [record.get('id')]: roleIds },
+    };
     OldModal.confirm({
       className: 'c7n-iam-confirm-modal',
       title: '删除用户',
       content: `确认删除用户"${record.get('realName')}"在本项目下的全部角色吗?`,
       onOk: async () => {
-        const result = await axios.put(`/base/v1/projects/${projectId}/users/${record.toData().id}/assign_roles`, []);
+        const result = await axios.post(`/base/v1/projects/${projectId}/role_members/delete`, JSON.stringify(postData));
         if (!result.failed) {
           await orgUserRoleDataSet.reset();
           dataSet.query();
@@ -121,6 +136,22 @@ export default function ListView(props) {
     }];
     return <Action data={actionDatas} />;
   }
+
+  function getInitialButton() {
+    if (InviteModal) {
+      return (
+        <InviteModal
+          allRoleDataSet={allRoleDataSet}
+          orgRoleDataSet={orgRoleDataSet}
+          orgUserRoleDataSet={orgUserRoleDataSet}
+          orgUserCreateDataSet={orgUserCreateDataSet}
+          orgUserListDataSet={dataSet}
+          onOk={handleSave}
+        />
+      );
+    }
+  }
+
   return (
     <TabPage>
       <Header
@@ -128,6 +159,7 @@ export default function ListView(props) {
       >
         <Button icon="person_add" onClick={handleCreate}>添加团队成员</Button>
         <Button icon="archive" onClick={handleImportRole}>导入团队成员</Button>
+        {getInitialButton()}
       </Header>
       <Breadcrumb />
       <Content

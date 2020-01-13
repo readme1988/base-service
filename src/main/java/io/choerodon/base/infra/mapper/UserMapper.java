@@ -3,6 +3,8 @@ package io.choerodon.base.infra.mapper;
 import java.util.List;
 import java.util.Set;
 
+import io.choerodon.base.infra.dto.ProjectDTO;
+import io.choerodon.base.infra.dto.RoleDTO;
 import org.apache.ibatis.annotations.Param;
 
 import io.choerodon.base.api.dto.RoleAssignmentSearchDTO;
@@ -56,6 +58,12 @@ public interface UserMapper extends Mapper<UserDTO> {
                                                      @Param("roleAssignmentSearchDTO")
                                                              RoleAssignmentSearchDTO roleAssignmentSearchDTO,
                                                      @Param("param") String param);
+
+    List<UserDTO> listUsersWithGitlabLabel(@Param("projectId") Long sourceId,
+                                           @Param("labelName") String labelName,
+                                           @Param("roleAssignmentSearchDTO")
+                                                   RoleAssignmentSearchDTO roleAssignmentSearchDTO,
+                                           @Param("param") String param);
 
 
     List<UserDTO> listUsersByIds(@Param("ids") Long[] ids, @Param("onlyEnabled") Boolean onlyEnabled);
@@ -254,4 +262,45 @@ public interface UserMapper extends Mapper<UserDTO> {
      */
     Boolean isOrgAdministrator(@Param("organizationId") Long organizationId,
                                @Param("userId") Long userId);
+
+    /**
+     * 查询用户下指定项目，
+     * @param id
+     * @param projectId
+     * @return null (项目不存在或者用户没有项目权限)
+     */
+    ProjectDTO selectProjectByUidAndProjectId(@Param("id") Long id, @Param("projectId") Long projectId);
+
+    /**
+     * 查询用户在项目下拥有的角色
+     * @param id
+     * @param projectId
+     * @return
+     */
+    List<RoleDTO> selectRolesByUidAndProjectId(@Param("id") Long id, @Param("projectId")Long projectId);
+
+    /**
+     * 校验用户是否是gitlab项目所有者
+     * @param id
+     * @param projectId
+     * @return
+     */
+    Integer checkIsGitlabProjectOwner(@Param("id") Long id, @Param("projectId")Long projectId);
+
+    /**
+     * 查询项目下指定角色的用户列表
+     * @param projectId
+     * @param roleLable
+     * @return
+     */
+    List<UserDTO> listProjectUsersByProjectIdAndRoleLable(@Param("projectId") Long projectId, @Param("roleLable") String roleLable);
+
+
+    /**
+     * 根据projectId和param模糊查询loginName和realName两列
+     * @param projectId
+     * @param param
+     * @return
+     */
+    List<UserDTO> listUsersByName(@Param("projectId") Long projectId, @Param("param") String param);
 }

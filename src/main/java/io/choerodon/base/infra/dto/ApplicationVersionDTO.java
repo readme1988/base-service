@@ -1,5 +1,6 @@
 package io.choerodon.base.infra.dto;
 
+import io.choerodon.mybatis.entity.BaseDTO;
 import io.swagger.annotations.ApiModelProperty;
 
 import javax.persistence.GeneratedValue;
@@ -9,8 +10,6 @@ import javax.persistence.Table;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-
-import io.choerodon.mybatis.entity.BaseDTO;
 
 /**
  * @author zongw.lee@gmail.com

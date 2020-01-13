@@ -10,6 +10,16 @@ public final class SagaTopic {
         }
 
         /**
+         * 批量为用户分配ADMIN权限
+         */
+        public static final String ASSIGN_ADMIN = "base-assign-admin";
+
+        /**
+         * 删除单个用户ADMIN权限
+         */
+        public static final String DELETE_ADMIN = "base-delete-admin";
+
+        /**
          * 创建用户
          */
         public static final String USER_CREATE = "iam-create-user";
@@ -77,6 +87,11 @@ public final class SagaTopic {
 
         //更新组织
         public static final String ORG_UPDATE = "iam-update-organization";
+
+        //处理ldap自动同步创建task
+        public static final String TASK_CREATE_LDAP_AUTO = "task-create-ldap-auto";
+
+        public static final String CREATE_LDAP_AUTO = "create-ldap-auto";
 
     }
 

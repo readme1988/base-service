@@ -1,12 +1,11 @@
 package io.choerodon.base.infra.mapper;
 
-import org.apache.ibatis.annotations.Param;
-
-import java.util.List;
-
 import io.choerodon.base.api.vo.ApplicationRespVO;
 import io.choerodon.base.infra.dto.ApplicationDTO;
 import io.choerodon.mybatis.common.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 /**
  * @author zongw.lee@gmail.com

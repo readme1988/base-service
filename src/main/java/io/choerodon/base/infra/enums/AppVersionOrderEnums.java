@@ -4,7 +4,7 @@ package io.choerodon.base.infra.enums;
  * @author wanghao
  * @Date 2019/9/19 15:38
  */
-public enum  AppVersionOrderEnums {
+public enum AppVersionOrderEnums {
     UPPUBLISHED(1),
     PUBLISHING(2),
     PUBLISHED(3);

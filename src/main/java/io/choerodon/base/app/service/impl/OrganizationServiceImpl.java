@@ -25,7 +25,7 @@ import io.choerodon.base.api.dto.OrgSharesDTO;
 import io.choerodon.base.api.dto.OrganizationSimplifyDTO;
 import io.choerodon.base.api.dto.payload.OrganizationEventPayload;
 import io.choerodon.base.api.dto.payload.OrganizationPayload;
-import io.choerodon.base.api.vo.RemoteTokenManagementResultVO;
+import io.choerodon.base.app.service.LdapService;
 import io.choerodon.base.app.service.OrganizationService;
 import io.choerodon.base.app.service.UserService;
 import io.choerodon.core.enums.ResourceType;
@@ -51,7 +51,7 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     private final Logger logger = LoggerFactory.getLogger(OrganizationServiceImpl.class);
 
-    public final static String ORGANIZATION_DOES_NOT_EXIST_EXCEPTION = "error.organization.does.not.exist";
+    public static final String ORGANIZATION_DOES_NOT_EXIST_EXCEPTION = "error.organization.does.not.exist";
 
     private AsgardFeignClient asgardFeignClient;
 
@@ -75,7 +75,6 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     private MemberRoleMapper memberRoleMapper;
 
-    private RemoteTokenMapper remoteTokenMapper;
 
     public OrganizationServiceImpl(@Value("${choerodon.devops.message:false}") Boolean devopsMessage,
                                    SagaClient sagaClient,
@@ -86,8 +85,7 @@ public class OrganizationServiceImpl implements OrganizationService {
                                    UserMapper userMapper,
                                    OrganizationMapper organizationMapper,
                                    RoleMapper roleMapper,
-                                   MemberRoleMapper memberRoleMapper,
-                                   RemoteTokenMapper remoteTokenMapper) {
+                                   MemberRoleMapper memberRoleMapper) {
         this.devopsMessage = devopsMessage;
         this.sagaClient = sagaClient;
         this.userService = userService;
@@ -98,7 +96,6 @@ public class OrganizationServiceImpl implements OrganizationService {
         this.organizationMapper = organizationMapper;
         this.roleMapper = roleMapper;
         this.memberRoleMapper = memberRoleMapper;
-        this.remoteTokenMapper = remoteTokenMapper;
     }
 
     private void initMemberRole(Long id, Long userId) {
@@ -320,53 +317,4 @@ public class OrganizationServiceImpl implements OrganizationService {
         return PageMethod.startPage(pageable.getPageNumber(), pageable.getPageSize(), PageableHelper.getSortSql(pageable.getSort())).doSelectPageInfo(() -> organizationMapper.selectSpecified(orgIds, name, code, enabled, params));
     }
 
-    @Override
-    public RemoteTokenManagementResultVO remoteTokenFunctionEnable(Long organizationId, Long objectVersionNumber) {
-        RemoteTokenManagementResultVO resultVo = new RemoteTokenManagementResultVO();
-        OrganizationDTO organizationDTO = organizationAssertHelper.organizationNotExisted(organizationId, "error.organization.notFound");
-        if (organizationDTO.getRemoteTokenEnabled()) {
-            throw new CommonException("error.organization.remoteToken.enabled");
-        }
-        organizationDTO.setObjectVersionNumber(objectVersionNumber);
-        organizationDTO.setRemoteTokenEnabled(true);
-        if (organizationMapper.updateByPrimaryKeySelective(organizationDTO) != 1) {
-            throw new CommonException("error.organization.update");
-        }
-        resultVo.setEnabled(true);
-        resultVo.setMessage("The organization remote token connection function has enabled");
-
-        return resultVo;
-    }
-
-    @Override
-    public RemoteTokenManagementResultVO remoteTokenFunctionDisable(Long organizationId, Long objectVersionNumber) {
-        RemoteTokenManagementResultVO resultVo = new RemoteTokenManagementResultVO();
-        OrganizationDTO organizationDTO = organizationAssertHelper.organizationNotExisted(organizationId, "error.organization.notFound");
-        if (!organizationDTO.getRemoteTokenEnabled()) {
-            throw new CommonException("error.organization.remoteToken.disabled");
-        }
-        organizationDTO.setObjectVersionNumber(objectVersionNumber);
-        organizationDTO.setRemoteTokenEnabled(false);
-        if (organizationMapper.updateByPrimaryKeySelective(organizationDTO) != 1) {
-            throw new CommonException("error.organization.update");
-        }
-        resultVo.setEnabled(false);
-        resultVo.setMessage("The organization remote token connection function has disabled");
-
-        return resultVo;
-    }
-
-    @Override
-    public RemoteTokenManagementResultVO remoteTokenFunctionCheck(Long organizationId) {
-        RemoteTokenManagementResultVO resultVO = new RemoteTokenManagementResultVO().setEnabled(false).setGenerated(false);
-        resultVO.setEnabled(organizationAssertHelper.organizationNotExisted(organizationId, "error.organization.notFound").getRemoteTokenEnabled());
-        if (!resultVO.getEnabled()) {
-            return resultVO;
-        }
-        resultVO.setGenerated(!ObjectUtils.isEmpty(remoteTokenMapper.selectLatestUnderOrg(organizationId)));
-        if (!resultVO.getGenerated()) {
-            return resultVO;
-        }
-        return resultVO;
-    }
 }

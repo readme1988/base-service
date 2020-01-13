@@ -21,6 +21,8 @@ const siteSafe = asyncRouter(() => import('./safe/site-safe'));
 
 const orgAdmin = asyncRouter(() => import('./org-admin'));
 
+const orgClient = asyncRouter(() => import('./client'));
+
 // project
 const generalSetting = asyncRouter(() => import('./general-setting'));
 const projectUser = asyncRouter(() => import('./project-user'));
@@ -39,6 +41,15 @@ const sagaInstance = asyncRouter(() => import('./saga/saga-instance'));
 // 应用市场
 const AppRelease = asyncRouter(() => import('./market/MarketRelease'));
 const AppMarket = asyncRouter(() => import('./market/AppMarket'));
+
+// lookup配置
+const lookupConfig = asyncRouter(() => import('./lookup-config'));
+
+// lov配置
+const lovConfig = asyncRouter(() => import('./lov-config'));
+
+// 多语言配置
+const langConfig = asyncRouter(() => import('./lang-config'));
 
 @inject('AppState')
 class IAMIndex extends React.Component {
@@ -69,10 +80,14 @@ class IAMIndex extends React.Component {
             <Route path={`${match.url}/saga-instance`} component={sagaInstance} />
             <Route path={`${match.url}/org-safe`} component={orgSafe} />
             <Route path={`${match.url}/safe`} component={siteSafe} />
+            <Route path={`${match.url}/client`} component={orgClient} />
             <Route path={`${match.url}/org-admin`} component={orgAdmin} />
             <Route path={`${match.url}/market-publish`} component={AppRelease} />
             <Route path={`${match.url}/app-market`} component={AppMarket} />
             <Route path={`${match.url}/application-management`} component={applicationManagement} />
+            <Route path={`${match.url}/lookup-config`} component={lookupConfig} />
+            <Route path={`${match.url}/lang-config`} component={langConfig} />
+            <Route path={`${match.url}/lov-config`} component={lovConfig} />
             <Route path="*" component={nomatch} />
           </Switch>
           <ModalContainer />

@@ -23,7 +23,6 @@ public interface DevopsFeignClient {
     @GetMapping(value = "/gitlab/email/check")
     ResponseEntity<Boolean> checkGitlabEmail(@RequestParam(value = "email") String email);
 
-
     @PostMapping("/v1/organizations/app_market/page_app_services")
     ResponseEntity<PageInfo<AppServiceUploadPayload>> pageByAppId(@RequestParam(value = "app_id") Long appId,
                                                                   @RequestParam("page") int page,

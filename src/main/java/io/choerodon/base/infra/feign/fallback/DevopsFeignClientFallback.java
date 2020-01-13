@@ -1,16 +1,15 @@
 package io.choerodon.base.infra.feign.fallback;
 
 import com.github.pagehelper.PageInfo;
+import io.choerodon.base.api.vo.AppServiceDetailsVO;
 import io.choerodon.base.api.vo.AppServiceVersionVO;
+import io.choerodon.base.infra.dto.devops.*;
+import io.choerodon.base.infra.feign.DevopsFeignClient;
+import io.choerodon.core.exception.CommonException;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 import java.util.Set;
-
-import io.choerodon.base.api.vo.AppServiceDetailsVO;
-import io.choerodon.base.infra.dto.devops.*;
-import io.choerodon.base.infra.feign.DevopsFeignClient;
-import io.choerodon.core.exception.CommonException;
 
 /**
  * @author Eugen
@@ -66,5 +65,4 @@ public class DevopsFeignClientFallback implements DevopsFeignClient {
     public ResponseEntity<List<AppServiceVersionVO>> listVersionById(Long projectId, String id, String params) {
         return null;
     }
-
 }

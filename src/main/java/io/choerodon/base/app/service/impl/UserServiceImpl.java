@@ -28,32 +28,34 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import io.choerodon.asgard.saga.annotation.Saga;
 import io.choerodon.asgard.saga.dto.StartInstanceDTO;
 import io.choerodon.asgard.saga.feign.SagaClient;
 import io.choerodon.asgard.saga.producer.StartSagaBuilder;
 import io.choerodon.asgard.saga.producer.TransactionalProducer;
-import io.choerodon.base.api.dto.UserInfoDTO;
 import io.choerodon.base.api.dto.*;
 import io.choerodon.base.api.dto.payload.UserEventPayload;
 import io.choerodon.base.api.validator.ResourceLevelValidator;
 import io.choerodon.base.api.validator.RoleValidator;
 import io.choerodon.base.api.validator.UserPasswordValidator;
 import io.choerodon.base.api.validator.UserValidator;
+import io.choerodon.base.api.vo.AssignAdminVO;
+import io.choerodon.base.api.vo.DeleteAdminVO;
+import io.choerodon.base.api.vo.UserVO;
 import io.choerodon.base.app.service.RoleMemberService;
 import io.choerodon.base.app.service.UserService;
-import io.choerodon.core.enums.ResourceType;
 import io.choerodon.base.infra.asserts.*;
 import io.choerodon.base.infra.dto.*;
 import io.choerodon.base.infra.enums.MemberType;
+import io.choerodon.base.infra.enums.RoleEnum;
 import io.choerodon.base.infra.feign.FileFeignClient;
 import io.choerodon.base.infra.feign.NotifyFeignClient;
-import io.choerodon.base.infra.mapper.MemberRoleMapper;
-import io.choerodon.base.infra.mapper.OrganizationMapper;
-import io.choerodon.base.infra.mapper.ProjectMapper;
-import io.choerodon.base.infra.mapper.UserMapper;
+import io.choerodon.base.infra.mapper.*;
 import io.choerodon.base.infra.utils.ImageUtils;
 import io.choerodon.base.infra.utils.PageUtils;
 import io.choerodon.base.infra.utils.ParamUtils;
+import io.choerodon.base.infra.utils.SagaTopic;
+import io.choerodon.core.enums.ResourceType;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.core.exception.ext.EmptyParamException;
 import io.choerodon.core.exception.ext.UpdateException;
@@ -96,6 +98,7 @@ public class UserServiceImpl implements UserService {
     private final ObjectMapper mapper = new ObjectMapper();
     private NotifyFeignClient notifyFeignClient;
     private UserMapper userMapper;
+    private RouteMemberRuleMapper routeMemberRuleMapper;
 
     private UserAssertHelper userAssertHelper;
 
@@ -113,6 +116,8 @@ public class UserServiceImpl implements UserService {
 
     private TransactionalProducer producer;
 
+    private RoleMapper roleMapper;
+
     public UserServiceImpl(PasswordRecord passwordRecord,
                            FileFeignClient fileFeignClient,
                            SagaClient sagaClient,
@@ -129,7 +134,9 @@ public class UserServiceImpl implements UserService {
                            ProjectAssertHelper projectAssertHelper,
                            RoleAssertHelper roleAssertHelper,
                            RoleMemberService roleMemberService,
-                           TransactionalProducer producer) {
+                           TransactionalProducer producer,
+                           RouteMemberRuleMapper routeMemberRuleMapper,
+                           RoleMapper roleMapper) {
         this.passwordRecord = passwordRecord;
         this.fileFeignClient = fileFeignClient;
         this.sagaClient = sagaClient;
@@ -147,6 +154,8 @@ public class UserServiceImpl implements UserService {
         this.roleAssertHelper = roleAssertHelper;
         this.roleMemberService = roleMemberService;
         this.producer = producer;
+        this.routeMemberRuleMapper = routeMemberRuleMapper;
+        this.roleMapper = roleMapper;
     }
 
     @Override
@@ -241,6 +250,17 @@ public class UserServiceImpl implements UserService {
     @Override
     public PageInfo<UserDTO> pagingQueryUsersByRoleIdOnProjectLevel(Pageable pageable, RoleAssignmentSearchDTO roleAssignmentSearchDTO, Long roleId, Long sourceId, boolean doPage) {
         return pagingQueryUsersByRoleIdAndLevel(pageable, roleAssignmentSearchDTO, roleId, sourceId, ResourceLevel.PROJECT.value(), doPage);
+    }
+
+    @Override
+    public List<UserVO> listUsersWithGitlabLabel(Long projectId, String labelName, RoleAssignmentSearchDTO roleAssignmentSearchDTO) {
+        String param = Optional.ofNullable(roleAssignmentSearchDTO).map(dto -> ParamUtils.arrToStr(dto.getParam())).orElse(null);
+        return userMapper.listUsersWithGitlabLabel(projectId, labelName, roleAssignmentSearchDTO, param)
+                .stream().map(t -> {
+                    UserVO userVO = new UserVO();
+                    BeanUtils.copyProperties(t, userVO);
+                    return userVO;
+                }).collect(Collectors.toList());
     }
 
     @Override
@@ -458,18 +478,34 @@ public class UserServiceImpl implements UserService {
                 .doSelectPageInfo(() -> userMapper.selectAdminUserPage(loginName, realName, params));
     }
 
+    @Saga(code = SagaTopic.User.ASSIGN_ADMIN, description = "分配Root权限同步事件", inputSchemaClass = AssignAdminVO.class)
     @Override
     @Transactional
     public void addAdminUsers(long[] ids) {
+        List<Long> adminUserIds = new ArrayList<>();
         for (long id : ids) {
             UserDTO dto = userMapper.selectByPrimaryKey(id);
             if (dto != null && !dto.getAdmin()) {
                 dto.setAdmin(true);
+                adminUserIds.add(id);
                 updateSelective(dto);
             }
         }
+
+        if (!adminUserIds.isEmpty()) {
+            AssignAdminVO assignAdminVO = new AssignAdminVO(adminUserIds);
+            producer.apply(StartSagaBuilder.newBuilder()
+                    .withRefId(adminUserIds.stream().map(String::valueOf).collect(Collectors.joining(",")))
+                    .withRefType("user")
+                    .withSourceId(0L)
+                    .withLevel(ResourceLevel.SITE)
+                    .withSagaCode(SagaTopic.User.ASSIGN_ADMIN)
+                    .withPayloadAndSerialize(assignAdminVO), builder -> {
+            });
+        }
     }
 
+    @Saga(code = SagaTopic.User.DELETE_ADMIN, description = "用户Root权限被删除事件同步", inputSchemaClass = DeleteAdminVO.class)
     @Override
     public void deleteAdminUser(long id) {
         UserDTO dto = userAssertHelper.userNotExisted(id);
@@ -478,7 +514,14 @@ public class UserServiceImpl implements UserService {
         if (userMapper.selectCount(userDTO) > 1) {
             if (dto.getAdmin()) {
                 dto.setAdmin(false);
-                updateSelective(dto);
+                producer.apply(StartSagaBuilder.newBuilder()
+                                .withRefId(String.valueOf(id))
+                                .withRefType("user")
+                                .withSourceId(0L)
+                                .withLevel(ResourceLevel.SITE)
+                                .withSagaCode(SagaTopic.User.DELETE_ADMIN)
+                                .withPayloadAndSerialize(new DeleteAdminVO(id)),
+                        builder -> updateSelective(dto));
             }
         } else {
             throw new CommonException("error.user.admin.size");
@@ -1056,6 +1099,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Async("notify-executor")
+    public Future<String> sendNotice(Long fromUserId, Map<Long, Set<Long>> longSetMap, String code, Map<String, Object> params, Long sourceId) {
+        long beginTime = System.currentTimeMillis();
+        for (Map.Entry<Long, Set<Long>> longSetEntry : longSetMap.entrySet()) {
+            if (!CollectionUtils.isEmpty(longSetEntry.getValue())) {
+                //封装消息内容参数
+                String roleName = longSetEntry.getValue().stream().map(e -> roleMapper.selectByPrimaryKey(e).getName()).collect(Collectors.joining(","));
+                params.put("roleName", roleName);
+                sendNotice(fromUserId, Arrays.asList(longSetEntry.getKey()), code, params, sourceId);
+            }
+        }
+        return new AsyncResult<>((System.currentTimeMillis() - beginTime) / 1000 + "s");
+    }
+
+    @Override
     public UserDTO updateUserDisabled(Long userId) {
         UserDTO userDTO = userAssertHelper.userNotExisted(userId);
         userDTO.setEnabled(false);
@@ -1072,5 +1130,48 @@ public class UserServiceImpl implements UserService {
         organizationProjectDTO.setProjectList(projectMapper.selectProjectsByUserId(userId, projectDTO)
                 .stream().map(p -> OrganizationProjectDTO.newInstanceProject(p.getId(), p.getName(), p.getCode())).collect(Collectors.toList()));
         return organizationProjectDTO;
+    }
+
+    @Override
+    public List<UserDTO> listEnableUsersByRouteRuleCode(String userName) {
+        List<UserDTO> userDTOS = listEnableUsersByName(ResourceLevel.SITE.value(), 0L, userName);
+        List<Long> userIds = new ArrayList<>();
+        routeMemberRuleMapper.selectAll().forEach(v -> userIds.add(v.getUserId()));
+
+        return userDTOS.stream().filter(v -> !userIds.contains(v.getId())).collect(Collectors.toList());
+    }
+
+    @Override
+    public ProjectDTO queryProjectById(Long id, Long projectId) {
+        return userMapper.selectProjectByUidAndProjectId(id, projectId);
+    }
+
+    @Override
+    public Boolean checkIsProjectOwner(Long id, Long projectId) {
+        List<RoleDTO> roleDTOList = userMapper.selectRolesByUidAndProjectId(id, projectId);
+        return CollectionUtils.isEmpty(roleDTOList) ? false : roleDTOList.stream().anyMatch(v -> RoleEnum.PROJECT_OWNER.value().equals(v.getCode()));
+    }
+
+    @Override
+    public Boolean checkIsGitlabProjectOwner(Long id, Long projectId) {
+        return userMapper.checkIsGitlabProjectOwner(id, projectId) != 0;
+    }
+
+    @Override
+    public List<UserDTO> listProjectUsersByProjectIdAndRoleLable(Long projectId, String roleLable) {
+        return userMapper.listProjectUsersByProjectIdAndRoleLable(projectId, roleLable);
+    }
+
+    @Override
+    public List<UserDTO> listUsersByName(Long projectId, String param) {
+        return userMapper.listUsersByName(projectId, param);
+    }
+
+
+    @Override
+    public List<UserDTO> queryAllAdminUsers() {
+        UserDTO searchCondition = new UserDTO();
+        searchCondition.setAdmin(Boolean.TRUE);
+        return userMapper.select(searchCondition);
     }
 }

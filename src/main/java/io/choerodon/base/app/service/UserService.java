@@ -11,6 +11,8 @@ import org.springframework.web.multipart.MultipartFile;
 import io.choerodon.base.api.dto.UserInfoDTO;
 import io.choerodon.base.api.dto.*;
 import org.springframework.data.domain.Pageable;
+
+import io.choerodon.base.api.vo.UserVO;
 import io.choerodon.core.enums.ResourceType;
 import io.choerodon.base.infra.dto.*;
 
@@ -52,6 +54,8 @@ public interface UserService {
     PageInfo<UserDTO> pagingQueryUsersByRoleIdOnProjectLevel(Pageable Pageable,
                                                              RoleAssignmentSearchDTO roleAssignmentSearchDTO,
                                                              Long roleId, Long sourceId, boolean doPage);
+
+    List<UserVO> listUsersWithGitlabLabel(Long projectId, String labelName, RoleAssignmentSearchDTO roleAssignmentSearchDTO);
 
     String uploadPhoto(Long id, MultipartFile file);
 
@@ -118,6 +122,8 @@ public interface UserService {
     Future<String> sendNotice(Long fromUserId, List<Long> userIds, String code, Map<String, Object> params, Long sourceId);
 
     Future<String> sendNotice(Long fromUserId, List<Long> userIds, String code, Map<String, Object> params, Long sourceId, boolean sendAll);
+
+    Future<String> sendNotice(Long fromUserId, Map<Long, Set<Long>> longSetMap, String code, Map<String, Object> params, Long sourceId);
 
     UserDTO updateUserDisabled(Long userId);
 
@@ -235,4 +241,52 @@ public interface UserService {
     List<ProjectDTO> queryProjects(Long userId, Boolean includedDisabled);
 
     OrganizationProjectDTO queryOrganizationProjectByUserId(Long userId);
+
+    List<UserDTO> listEnableUsersByRouteRuleCode(String userName);
+    /**
+     * 查询用户下指定项目，
+     * @param id
+     * @param projectId
+     * @return null (项目不存在或者用户没有项目权限)
+     */
+    ProjectDTO queryProjectById(Long id, Long projectId);
+
+    /**
+     * 校验用户是否是项目的所有者
+     * @param id
+     * @param projectId
+     * @return true 是
+     */
+    Boolean checkIsProjectOwner(Long id, Long projectId);
+
+    /**
+     * 校验用户是否是gitlab项目所有者
+     * @param id
+     * @param projectId
+     * @return
+     */
+    Boolean checkIsGitlabProjectOwner(Long id, Long projectId);
+
+    /**
+     * 查询项目下指定角色的用户列表
+     * @param projectId
+     * @param roleLable
+     * @return
+     */
+    List<UserDTO> listProjectUsersByProjectIdAndRoleLable(Long projectId, String roleLable);
+
+    /**
+     * 根据projectId和param模糊查询loginName和realName两列
+     * @param projectId
+     * @param param
+     * @return
+     */
+    List<UserDTO> listUsersByName(Long projectId, String param);
+
+
+    /**
+     * 查询所有的Root用户
+     * @return 所有的root用户
+     */
+    List<UserDTO> queryAllAdminUsers();
 }
